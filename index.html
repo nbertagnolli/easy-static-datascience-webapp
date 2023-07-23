@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.19.1/full/pyodide.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.7.0/flowbite.min.js"></script>
+
+</head>
+
+<body>
+    <div class="container mx-auto px-4">
+        <h1 class="text-3xl mt-6 font-bold">
+            Simple Model Trainer
+        </h1>
+        <div class="flex gap-6 mt-10">
+            <div class="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-200/60">
+                <!-- Data Set Input-->
+                <div class="w-full px-3 mb-6 md:mb-0">
+                    <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="data-set">
+                        Data Set URL
+                    </label>
+                    <input data-tooltip-target="tooltip-data-set"
+                        class="appearance-none block w-full bg-gray-200 text-gray-700 border rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white"
+                        id="data-set" type="text"
+                        value="https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv">
+                </div>
+                <div id="tooltip-data-set" role="tooltip"
+                    class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip dark:bg-gray-700">
+                    A link to a CSV of data online you'd like to train on.
+                    <div class="tooltip-arrow" data-popper-arrow></div>
+                </div>
+                <!-- Response Column Input -->
+                <div class="w-full px-3 mb-6 md:mb-0">
+                    <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
+                        for="response-column">
+                        Response Column Name
+                    </label>
+                    <input data-tooltip-target="tooltip-response-column"
+                        class="appearance-none block w-full bg-gray-200 text-gray-700 border rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white"
+                        id="response-column" type="text" value="variety">
+                </div>
+                <div id="tooltip-response-column" role="tooltip"
+                    class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip dark:bg-gray-700">
+                    The name of the column with the response variable. For the default Iris dataset it is `variety`
+                    <div class="tooltip-arrow" data-popper-arrow></div>
+                </div>
+                <!-- Run Buttons -->
+                <div class="flex gap-4 my-4">
+                    <button
+                        class="js-clear bg-gray-50 flex-1 p-3 rounded font-semibold focus:outline-none">Clear</button>
+                    <button
+                        class="js-submt bg-indigo-200 flex-1 p-3 rounded font-semibold focus:outline-none">Submit</button>
+                </div>
+            </div>
+        </div>
+        <!-- Holder div for the plots -->
+        <div id="results-plot"></div>
+    </div>
+    <script type="text/javascript">
+
+        const toObject = (map = new Map) => {
+            if (!(map instanceof Map)) return map
+            return Object.fromEntries(Array.from(map.entries(), ([k, v]) => {
+                if (v instanceof Array) {
+                    return [k, v.map(toObject)]
+                } else if (v instanceof Map) {
+                    return [k, toObject(v)]
+                } else {
+                    return [k, v]
+                }
+            }))
+        }
+
+        // Setup all input fields for access.
+        const divInit = document.querySelector(".js-init");
+        const btnClear = document.querySelector(".js-clear");
+        const btnSubmt = document.querySelector(".js-submt");
+        const inputDataSet = document.getElementById("data-set");
+        const inputResponseColumn = document.getElementById("response-column");
+
+        async function main() {
+            const c = console;
+
+            // Grab the python code.
+            // when working locally change this to http://localhost:8000/main.py, otherwise make it the location of the raw file on github.
+            const py_code = await (await fetch("http://localhost:8000/main.py")).text();
+            const pyodide = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.19.1/full/"
+            });
+            // Load in the packages
+            await pyodide.loadPackage(["numpy", "pandas", "scikit-learn"]);
+
+            // Load in the packages
+            pyodide.runPython(py_code);
+
+            const compute = async () => {
+
+                // Grab all input values.
+                // Pandas cannot fetch data from the internet so this must be done in JS.
+                const dataSet = await (await fetch(inputDataSet.value)).text();
+                const responseColumn = inputResponseColumn.value;
+
+                // Run the monte Carlo Simulation
+                const out = pyodide.runPython(`main(${JSON.stringify(dataSet)},${JSON.stringify(responseColumn)})`).toJs();
+
+                // Plot the histogram results
+                plot = document.getElementById('results-plot');
+                Plotly.newPlot(plot, toObject(out).scores, { title: "Training Performance", font: { size: 18 }, barmode: 'group' }, { responsive: true });
+
+            };
+
+            btnSubmt.addEventListener("click", () => {
+                compute();
+            });
+            btnSubmt.click();
+            btnClear.addEventListener("click", () => {
+                inputDataSet = "https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv";
+                inputResponseColumn = "variety";
+                compute();
+            });
+            inputDataSet.focus();
+        };
+        main();
+    </script>
+</body>
+
+</html>
