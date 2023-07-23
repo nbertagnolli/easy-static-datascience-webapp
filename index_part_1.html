@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.19.1/full/pyodide.js"></script>
+</head>
+
+<body>
+    <h1>Simple Greeter</h1>
+    <input id="data-input" type="text" value="Geoffrey Hinton">
+    <button class="js-submt">Submit</button>
+    <p id="greeting"></p>
+    <script type="text/javascript">
+
+        // Create a main loop function to run.
+        async function main() {
+            // Grab the python code.
+            // when working locally change this to http://localhost:8000/main.py, otherwise make it the location of the raw file on github.
+            const py_code = await (await fetch("http://localhost:8000/main1.py")).text();
+
+            // Load in the pyodide package
+            const pyodide = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.19.1/full/"
+            });
+
+            // Load in the main.py module.
+            pyodide.runPython(py_code);
+
+            // Grab the value of the input field
+            const data = document.getElementById("data-input").value;
+
+            // Run the greet method in Python and get the result.
+            const out = pyodide.runPython(`greet(${JSON.stringify(data)})`);
+
+            // Display the output.
+            document.getElementById("greeting").innerText = out;
+        };
+
+        // Run the main loop.
+        main();
+    </script>
+</body>
+
+</html>
