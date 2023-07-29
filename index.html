@@ -87,7 +87,7 @@
 
             // Grab the python code.
             // when working locally change this to http://localhost:8000/main.py, otherwise make it the location of the raw file on github.
-            const py_code = await (await fetch("http://localhost:8000/main.py")).text();
+            const py_code = await (await fetch("https://raw.githubusercontent.com/nbertagnolli/easy-static-datascience-webapp/main/main.py")).text();
             const pyodide = await loadPyodide({
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.19.1/full/"
             });
